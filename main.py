@@ -9,7 +9,6 @@ app = Flask(__name__)
 
 user_data = {}
 
-# 🔤 Фразы на двух языках
 translations = {
     "uz": {
         "start": "Assalomu alaykum! Tilni tanlang:",
@@ -19,7 +18,10 @@ translations = {
         "amount_error": "Iltimos, to'g'ri summa kiriting.",
         "months_error": "Iltimos, to'g'ri oy sonini kiriting.",
         "rate_error": "Iltimos, to'g'ri foiz stavkasini kiriting.",
-        "result": "Umumiy to'lov: {total:.2f} so'm"
+        "result": "Umumiy to'lov: {total:.2f} so'm",
+        "menu": "Quyidagilardan birini tanlang:",
+        "new_calc": "🔁 Yangi hisob",
+        "change_lang": "🌐 Tilni o'zgartirish"
     },
     "ru": {
         "start": "Здравствуйте! Пожалуйста, выберите язык:",
@@ -29,20 +31,29 @@ translations = {
         "amount_error": "Пожалуйста, введите корректную сумму.",
         "months_error": "Пожалуйста, введите корректное количество месяцев.",
         "rate_error": "Пожалуйста, введите корректную процентную ставку.",
-        "result": "Общая сумма выплат: {total:.2f} сум"
+        "result": "Общая сумма выплат: {total:.2f} сум",
+        "menu": "Пожалуйста, выберите действие:",
+        "new_calc": "🔁 Новый расчёт",
+        "change_lang": "🌐 Изменить язык"
     }
 }
 
-# Команда /start
-@bot.message_handler(commands=["start"])
-def start(message):
-    chat_id = message.chat.id
-    user_data[chat_id] = {}
+def send_language_selection(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("🇺🇿 O'zbek", "🇷🇺 Русский")
     bot.send_message(chat_id, translations["uz"]["start"], reply_markup=markup)
 
-# Обработка выбора языка и шагов
+def send_main_menu(chat_id, lang):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(translations[lang]["new_calc"], translations[lang]["change_lang"])
+    bot.send_message(chat_id, translations[lang]["menu"], reply_markup=markup)
+
+@bot.message_handler(commands=["start"])
+def start(message):
+    chat_id = message.chat.id
+    user_data[chat_id] = {}
+    send_language_selection(chat_id)
+
 @bot.message_handler(func=lambda msg: True)
 def handle_message(message):
     chat_id = message.chat.id
@@ -53,15 +64,23 @@ def handle_message(message):
 
     data = user_data[chat_id]
 
-    if "lang" not in data:
+    if text in ["🇺🇿 O'zbek", "🇷🇺 Русский", translations.get("uz", {}).get("change_lang"), translations.get("ru", {}).get("change_lang")]:
+        data.clear()
         if "O'zbek" in text:
             data["lang"] = "uz"
         elif "Русский" in text:
             data["lang"] = "ru"
-        else:
-            bot.send_message(chat_id, "Iltimos, tilni tanlang:\nПожалуйста, выберите язык.")
-            return
         bot.send_message(chat_id, translations[data["lang"]]["amount"])
+        return
+
+    if text in [translations.get("uz", {}).get("new_calc"), translations.get("ru", {}).get("new_calc")]:
+        lang = data.get("lang", "uz")
+        user_data[chat_id] = {"lang": lang}
+        bot.send_message(chat_id, translations[lang]["amount"])
+        return
+
+    if "lang" not in data:
+        bot.send_message(chat_id, "Iltimos, tilni tanlang:\nПожалуйста, выберите язык.")
         return
 
     lang = data["lang"]
@@ -82,6 +101,7 @@ def handle_message(message):
         try:
             data["rate"] = float(text)
             calculate_and_send_result(chat_id)
+            send_main_menu(chat_id, lang)
             user_data.pop(chat_id)
         except:
             bot.send_message(chat_id, translations[lang]["rate_error"])
