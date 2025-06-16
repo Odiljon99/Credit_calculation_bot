@@ -5,6 +5,12 @@ from telebot import types
 
 TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
+
+# ✅ Добавляем команду /start в меню Telegram
+bot.set_my_commands([
+    types.BotCommand("start", "Boshlash / Начать"),
+])
+
 app = Flask(__name__)
 
 user_data = {}
