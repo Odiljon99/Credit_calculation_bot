@@ -11,17 +11,20 @@ bot.set_my_commands([
 ])
 
 app = Flask(__name__)
-
 user_data = {}
 
 translations = {
     "uz": {
         "start": "Assalomu alaykum! Tilni tanlang:",
-        "amount": "Kredit summasini kiriting:",
-        "months": "Iltimos, muddatni tanlang:",
+        "choose_product": "Iltimos, kredit turini tanlang:",
+        "product_options": ["🟢 Mikrokredit", "✍️ Mustaqil kiritish"],
         "client_type": "Iltimos, mijoz turini tanlang:",
+        "months": "Iltimos, muddatni tanlang:",
+        "amount": "Kredit summasini kiriting:",
+        "rate": "Foiz stavkasini kiriting (masalan, 28):",
         "amount_error": "Iltimos, to'g'ri summa kiriting.",
-        "months_error": "Faqat quyidagi tugmalardan birini tanlang.",
+        "months_error": "Faqat tugmalardan birini tanlang yoki to'g'ri son kiriting.",
+        "rate_error": "Iltimos, to'g'ri foiz stavkasini kiriting.",
         "result": "Umumiy to'lov: {total:.2f} so'm",
         "menu": "Quyidagilardan birini tanlang:",
         "new_calc": "🔁 Yangi hisob",
@@ -35,11 +38,15 @@ translations = {
     },
     "ru": {
         "start": "Здравствуйте! Пожалуйста, выберите язык:",
-        "amount": "Введите сумму кредита:",
-        "months": "Пожалуйста, выберите срок:",
+        "choose_product": "Пожалуйста, выберите тип кредита:",
+        "product_options": ["🟢 Микрокредит", "✍️ Самостоятельный ввод"],
         "client_type": "Пожалуйста, выберите тип клиента:",
+        "months": "Пожалуйста, выберите срок:",
+        "amount": "Введите сумму кредита:",
+        "rate": "Введите процентную ставку (например, 28):",
         "amount_error": "Пожалуйста, введите корректную сумму.",
-        "months_error": "Выберите только одну из кнопок ниже.",
+        "months_error": "Пожалуйста, выберите срок из кнопок или введите число.",
+        "rate_error": "Пожалуйста, введите корректную процентную ставку.",
         "result": "Общая сумма выплат: {total:.2f} сум",
         "menu": "Пожалуйста, выберите действие:",
         "new_calc": "🔁 Новый расчёт",
@@ -63,6 +70,12 @@ def send_main_menu(chat_id, lang):
     markup.add(translations[lang]["new_calc"], translations[lang]["change_lang"])
     bot.send_message(chat_id, translations[lang]["menu"], reply_markup=markup)
 
+def send_product_options(chat_id, lang):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    for option in translations[lang]["product_options"]:
+        markup.add(option)
+    bot.send_message(chat_id, translations[lang]["choose_product"], reply_markup=markup)
+
 def send_client_type_selection(chat_id, lang):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     for ct in translations[lang]["client_types"]:
@@ -84,7 +97,7 @@ def start(message):
 @bot.message_handler(func=lambda msg: True)
 def handle_message(message):
     chat_id = message.chat.id
-    text = message.text
+    text = message.text.strip()
 
     if chat_id not in user_data:
         user_data[chat_id] = {}
@@ -92,15 +105,15 @@ def handle_message(message):
     data = user_data[chat_id]
 
     if text in ["🇺🇿 O'zbek", "🇷🇺 Русский", translations["uz"]["change_lang"], translations["ru"]["change_lang"]]:
-        data.clear()
-        data["lang"] = "uz" if "O'zbek" in text else "ru"
-        bot.send_message(chat_id, translations[data["lang"]]["amount"])
+        lang = "uz" if "O'zbek" in text else "ru"
+        user_data[chat_id] = {"lang": lang}
+        send_product_options(chat_id, lang)
         return
 
     if text in [translations["uz"]["new_calc"], translations["ru"]["new_calc"]]:
         lang = data.get("lang", "uz")
         user_data[chat_id] = {"lang": lang}
-        bot.send_message(chat_id, translations[lang]["amount"])
+        send_product_options(chat_id, lang)
         return
 
     if "lang" not in data:
@@ -109,35 +122,61 @@ def handle_message(message):
 
     lang = data["lang"]
 
-    if "amount" not in data:
-        try:
-            data["amount"] = float(text)
-            send_client_type_selection(chat_id, lang)
-        except:
-            bot.send_message(chat_id, translations[lang]["amount_error"])
-    elif "client_type" not in data:
-        if text in translations[lang]["client_types"]:
-            data["client_type"] = text
-            send_terms_selection(chat_id, lang, text)
+    if "product" not in data:
+        if text in translations[lang]["product_options"]:
+            data["product"] = text
+            if "Mikro" in text or "Микро" in text:
+                send_client_type_selection(chat_id, lang)
+            else:
+                bot.send_message(chat_id, translations[lang]["amount"])
         else:
-            send_client_type_selection(chat_id, lang)
-    elif "months" not in data:
-        try:
-            term_map = {
-                "24": 24,
-                "36": 36,
-                "48": 48
-            }
-            num = ''.join(filter(str.isdigit, text))
-            if num not in term_map:
-                raise ValueError
-            data["months"] = term_map[num]
-            data["rate"] = get_rate(data["client_type"], data["months"], lang)
-            calculate_and_send_result(chat_id)
-            send_main_menu(chat_id, lang)
-            user_data.pop(chat_id)
-        except:
-            bot.send_message(chat_id, translations[lang]["months_error"])
+            send_product_options(chat_id, lang)
+        return
+
+    if data["product"].startswith("🟢"):
+        if "client_type" not in data:
+            if text in translations[lang]["client_types"]:
+                data["client_type"] = text
+                send_terms_selection(chat_id, lang, text)
+            else:
+                send_client_type_selection(chat_id, lang)
+        elif "months" not in data:
+            try:
+                num = ''.join(filter(str.isdigit, text))
+                data["months"] = int(num)
+                data["rate"] = get_rate(data["client_type"], data["months"], lang)
+                bot.send_message(chat_id, translations[lang]["amount"])
+            except:
+                bot.send_message(chat_id, translations[lang]["months_error"])
+        elif "amount" not in data:
+            try:
+                data["amount"] = float(text)
+                calculate_and_send_result(chat_id)
+                send_main_menu(chat_id, lang)
+                user_data.pop(chat_id)
+            except:
+                bot.send_message(chat_id, translations[lang]["amount_error"])
+    else:
+        if "amount" not in data:
+            try:
+                data["amount"] = float(text)
+                bot.send_message(chat_id, translations[lang]["months"])
+            except:
+                bot.send_message(chat_id, translations[lang]["amount_error"])
+        elif "months" not in data:
+            try:
+                data["months"] = int(text)
+                bot.send_message(chat_id, translations[lang]["rate"])
+            except:
+                bot.send_message(chat_id, translations[lang]["months_error"])
+        elif "rate" not in data:
+            try:
+                data["rate"] = float(text)
+                calculate_and_send_result(chat_id)
+                send_main_menu(chat_id, lang)
+                user_data.pop(chat_id)
+            except:
+                bot.send_message(chat_id, translations[lang]["rate_error"])
 
 def get_rate(client_type, months, lang):
     if lang == "uz":
