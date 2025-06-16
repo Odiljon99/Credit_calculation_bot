@@ -115,6 +115,34 @@ def handle_message(message):
     elif "client_type" not in data:
         if text in translations[lang]["client_types"]:
             data["client_type"] = text
+
+            # 🔽 Вставка пояснения по процентам
+            if lang == "uz":
+                msg = (
+                    "📌 Foiz stavkalari:\n"
+                    "Davlat xizmatchisi:\n"
+                    " - 24 oy: 25%\n"
+                    " - 36 oy: 26%\n"
+                    " - 48 oy: 27%\n\n"
+                    "Xususiy sektor va Pensionerlar:\n"
+                    " - 24 oy: 30%\n"
+                    " - 36 oy: 31%\n"
+                    " - 48 oy: 32%"
+                )
+            else:
+                msg = (
+                    "📌 Процентные ставки:\n"
+                    "Госслужащий:\n"
+                    " - 24 мес: 25%\n"
+                    " - 36 мес: 26%\n"
+                    " - 48 мес: 27%\n\n"
+                    "Частный сектор и Пенсионеры:\n"
+                    " - 24 мес: 30%\n"
+                    " - 36 мес: 31%\n"
+                    " - 48 мес: 32%"
+                )
+            bot.send_message(chat_id, msg)
+
             data["rate"] = get_rate(data["client_type"], data["months"], lang)
             calculate_and_send_result(chat_id)
             send_main_menu(chat_id, lang)
@@ -150,7 +178,7 @@ def calculate_and_send_result(chat_id):
         interest = remaining * rate / 12
         payment = main_debt + interest
         total += payment
-        result += f"{i+1}-oy: {payment:.2f} so'm\n"
+        result += f"{i+1}-oy: {payment:.2f} so'm\n" if lang == "uz" else f"{i+1}-мес: {payment:.2f} сум\n"
 
     result += "\n" + translations[lang]["result"].format(total=total)
     bot.send_message(chat_id, result)
@@ -166,5 +194,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
