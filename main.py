@@ -67,7 +67,7 @@ def send_language_selection(chat_id):
 
 def send_main_menu(chat_id, lang):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(translations[lang]["new_calc"], translations[lang]["change_lang"])
+    markup.add(translations[lang]["new_calc"])
     bot.send_message(chat_id, translations[lang]["menu"], reply_markup=markup)
 
 def send_product_options(chat_id, lang):
@@ -87,15 +87,6 @@ def send_terms_selection(chat_id, lang, client_type):
     for term in translations[lang]["terms"][client_type]:
         markup.add(term)
     bot.send_message(chat_id, translations[lang]["months"], reply_markup=markup)
-
-def parse_months_and_rate(text):
-    import re
-    match = re.search(r"(\d+)[^\d]+(\d+)%", text)
-    if match:
-        months = int(match.group(1))
-        rate = float(match.group(2))
-        return months, rate
-    return None, None
 
 @bot.message_handler(commands=["start"])
 def start(message):
@@ -151,11 +142,9 @@ def handle_message(message):
                 send_client_type_selection(chat_id, lang)
         elif "months" not in data:
             try:
-                months, rate = parse_months_and_rate(text)
-                if not months or not rate:
-                    raise ValueError("Invalid format")
-                data["months"] = months
-                data["rate"] = rate
+                num = ''.join(filter(str.isdigit, text))
+                data["months"] = int(num)
+                data["rate"] = get_rate(data["client_type"], data["months"], lang)
                 bot.send_message(chat_id, translations[lang]["amount"])
             except:
                 bot.send_message(chat_id, translations[lang]["months_error"])
@@ -188,6 +177,18 @@ def handle_message(message):
                 user_data.pop(chat_id)
             except:
                 bot.send_message(chat_id, translations[lang]["rate_error"])
+
+def get_rate(client_type, months, lang):
+    if lang == "uz":
+        if client_type == "Davlat xizmatchisi":
+            return {24: 25, 36: 26, 48: 27}[months]
+        else:
+            return {24: 30, 36: 31, 48: 32}[months]
+    else:
+        if client_type == "Госслужащий":
+            return {24: 25, 36: 26, 48: 27}[months]
+        else:
+            return {24: 30, 36: 31, 48: 32}[months]
 
 def calculate_and_send_result(chat_id):
     data = user_data[chat_id]
