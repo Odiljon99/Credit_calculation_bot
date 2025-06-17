@@ -1,4 +1,4 @@
-import telebot import os from flask import Flask, request from telebot import types import threading import time
+import telebot import os import time import threading from flask import Flask, request from telebot import types
 
 TOKEN = os.environ.get("BOT_TOKEN") bot = telebot.TeleBot(TOKEN)
 
@@ -7,6 +7,8 @@ bot.set_my_commands([ types.BotCommand("start", "Boshlash / Начать"), ])
 app = Flask(name) user_data = {}
 
 translations = { "uz": { "start": "Assalomu alaykum! Tilni tanlang:", "choose_product": "Iltimos, kredit turini tanlang:", "product_options": ["🟢 Mikrokredit", "✍️ Mustaqil kiritish"], "client_type": "Iltimos, mijoz turini tanlang:", "months": "Iltimos, muddatni tanlang:", "amount": "Kredit summasini kiriting:", "rate": "Foiz stavkasini kiriting (masalan, 28):", "amount_error": "Iltimos, to'g'ri summa kiriting.", "months_error": "Faqat tugmalardan birini tanlang yoki to'g'ri son kiriting.", "rate_error": "Iltimos, to'g'ri foiz stavkasini kiriting.", "result": "Umumiy to'lov: {total:.2f} so'm", "menu": "Quyidagilardan birini tanlang:", "new_calc": "🔁 Yangi hisob", "change_lang": "🌐 Tilni o'zgartirish", "client_types": ["Davlat xizmatchisi", "Xususiy sektor", "Pensioner"], "terms": { "Davlat xizmatchisi": ["24 oy - 25%", "36 oy - 26%", "48 oy - 27%"], "Xususiy sektor": ["24 oy - 30%", "36 oy - 31%", "48 oy - 32%"], "Pensioner": ["24 oy - 30%", "36 oy - 31%", "48 oy - 32%"] } }, "ru": { "start": "Здравствуйте! Пожалуйста, выберите язык:", "choose_product": "Пожалуйста, выберите тип кредита:", "product_options": ["🟢 Микрокредит", "✍️ Самостоятельный ввод"], "client_type": "Пожалуйста, выберите тип клиента:", "months": "Пожалуйста, выберите срок:", "amount": "Введите сумму кредита:", "rate": "Введите процентную ставку (например, 28):", "amount_error": "Пожалуйста, введите корректную сумму.", "months_error": "Пожалуйста, выберите срок из кнопок или введите число.", "rate_error": "Пожалуйста, введите корректную процентную ставку.", "result": "Общая сумма выплат: {total:.2f} сум", "menu": "Пожалуйста, выберите действие:", "new_calc": "🔁 Новый расчёт", "change_lang": "🌐 Изменить язык", "client_types": ["Госслужащий", "Частный сектор", "Пенсионер"], "terms": { "Госслужащий": ["24 мес - 25%", "36 мес - 26%", "48 мес - 27%"], "Частный сектор": ["24 мес - 30%", "36 мес - 31%", "48 мес - 32%"], "Пенсионер": ["24 мес - 30%", "36 мес - 31%", "48 мес - 32%"] } } }
+
+loading_messages = [ "🛠️ Yuklanmoqda... / Загрузка...", "⏳ Maʼlumotlar tekshirilmoqda... / Проверка данных...", "🤖 Bot ishga tushirilmoqda... / Инициализация бота...", "🚀 Tayyorlanmoqda... / Подготовка..." ]
 
 def send_language_selection(chat_id): markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) markup.add("🇺🇿 O'zbek", "🇷🇺 Русский") bot.send_message(chat_id, translations["uz"]["start"], reply_markup=markup)
 
@@ -20,9 +22,9 @@ def send_terms_selection(chat_id, lang, client_type): markup = types.ReplyKeyboa
 
 def parse_months_and_rate(text): import re match = re.search(r"(\d+)[^\d]+(\d+)%", text) if match: months = int(match.group(1)) rate = float(match.group(2)) return months, rate return None, None
 
-def show_loading_messages(chat_id): messages = [ "Yuklanmoqda / Загрузка...", "Iltimos kuting / Пожалуйста, подождите...", "Sozlamalar tekshirilmoqda / Проверка настроек...", "Tayyorlanmoqda / Подготовка..." ] for msg in messages: bot.send_message(chat_id, msg) time.sleep(1.5)
+def loading_sequence(chat_id): for msg in loading_messages: bot.send_message(chat_id, msg) time.sleep(10) send_language_selection(chat_id)
 
-@bot.message_handler(commands=["start"]) def start(message): chat_id = message.chat.id user_data[chat_id] = {} threading.Thread(target=show_loading_messages, args=(chat_id,)).start() time.sleep(6)  # немного подождать, чтобы загрузка шла не мгновенно send_language_selection(chat_id)
+@bot.message_handler(commands=["start"]) def start(message): chat_id = message.chat.id user_data[chat_id] = {} threading.Thread(target=loading_sequence, args=(chat_id,)).start()
 
 @bot.message_handler(func=lambda msg: True) def handle_message(message): chat_id = message.chat.id text = message.text.strip()
 
