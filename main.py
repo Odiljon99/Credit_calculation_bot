@@ -125,8 +125,13 @@ for i in range(months):
 result += "\n" + translations[lang]["result"].format(total=total)
 bot.send_message(chat_id, result)
 
-@app.route(f"/{TOKEN}", methods=["POST"]) def webhook(): bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))]) return "!", 200
-
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode("utf-8"))
+    if update.message:
+        print("Сообщение из:", update.message.chat.title or update.message.chat.id)
+    bot.process_new_updates([update])
+    return "!", 200
 @app.route("/", methods=["GET"]) def index(): return "Bot ishlayapti", 200
 
 if name == "main": app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
