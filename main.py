@@ -110,14 +110,14 @@ def handle_message(message):
 
     if text in ["🇺🇿 O'zbek", "🇷🇺 Русский", translations["uz"]["change_lang"], translations["ru"]["change_lang"]]:
         lang = "uz" if "O'zbek" in text else "ru"
-        user_data[chat_id] = {"lang": lang}
+        user_data[chat_id] = {"lang": lang}  # Сохраняем язык и очищаем остальные данные
         send_keyboard(chat_id, translations[lang]["choose_product"], [[p] for p in translations[lang]["product_options"]])
         return
 
     if text in [translations["uz"]["new_calc"], translations["ru"]["new_calc"]]:
-        lang = user_data[chat_id].get("lang", "uz")
-        user_data[chat_id].clear()
-        user_data[chat_id]["lang"] = lang
+        lang = user_data[chat_id].get("lang", "uz")  # Сохраняем язык до очистки
+        user_data[chat_id].clear()                   # Очищаем всё
+        user_data[chat_id]["lang"] = lang            # Восстанавливаем язык
         send_keyboard(chat_id, translations[lang]["choose_product"], [[p] for p in translations[lang]["product_options"]])
         return
 
