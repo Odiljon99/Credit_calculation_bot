@@ -115,10 +115,10 @@ def handle_message(message):
         return
 
     if text in [translations["uz"]["new_calc"], translations["ru"]["new_calc"]]:
-    lang = user_data[chat_id].get("lang", "uz")
-    user_data[chat_id] = {"lang": lang}
-    send_keyboard(chat_id, translations[lang]["choose_product"], [[p] for p in translations[lang]["product_options"]])
-    return
+        lang = user_data[chat_id].get("lang", "uz")
+        user_data[chat_id] = {"lang": lang}
+        send_keyboard(chat_id, translations[lang]["choose_product"], [[p] for p in translations[lang]["product_options"]])
+        return
 
     if "product" not in data:
         if text in translations[lang]["product_options"]:
