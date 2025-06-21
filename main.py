@@ -116,7 +116,7 @@ def handle_message(message):
 
     if text in [translations["uz"]["new_calc"], translations["ru"]["new_calc"]]:
         lang = user_data[chat_id].get("lang", "uz")
-        user_data[chat_id].clear()  # очищаем всё, кроме языка
+        user_data[chat_id].clear()
         user_data[chat_id]["lang"] = lang
         send_keyboard(chat_id, translations[lang]["choose_product"], [[p] for p in translations[lang]["product_options"]])
         return
